@@ -1,104 +1,180 @@
-import React, { useEffect, useState } from 'react';
-import { ScrollView, Text, Pressable, View, Alert, StyleSheet } from 'react-native';
-import { Video, ResizeMode } from 'expo-av';
-import * as FileSystem from 'expo-file-system';
-import { Screen, Card, SectionTitle, Chip, useType } from '../components/UI';
-import { VIDEOS, CATEGORIES, VideoItem } from '../data/videos';
-import { colors, spacing, MIN_TOUCH } from '../theme/theme';
+import { useEffect, useMemo, useState } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useVideoPlayer, VideoView } from 'expo-video';
+import * as FileSystem from 'expo-file-system/legacy';
+import { Card, Chip, Screen, SectionTitle, useType } from '../components/UI';
+import { CATEGORIES, VIDEOS, VideoItem } from '../data/videos';
+import { useAppStore } from '../store/useAppStore';
+import { colors, MIN_TOUCH, spacing } from '../theme/theme';
 
-const DIR = FileSystem.documentDirectory + 'videos/';
-
-/** Biblioteka wideo (dokument §5.8): streaming + pobieranie offline, treści wg roli. */
+/** Streaming and offline video library. Production assets must come from a CMS/CDN. */
 export default function VideoLibraryScreen() {
   const type = useType();
-  const [cat, setCat] = useState<VideoItem['category'] | 'all'>('all');
+  const role = useAppStore((state) => state.profile?.role);
+  const [category, setCategory] = useState<VideoItem['category'] | 'all'>('all');
   const [playing, setPlaying] = useState<VideoItem | null>(null);
   const [downloaded, setDownloaded] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<string | null>(null);
+  const directory = FileSystem.documentDirectory ? `${FileSystem.documentDirectory}videos/` : null;
 
   useEffect(() => {
-    (async () => {
+    if (!directory) return;
+    let mounted = true;
+    void (async () => {
       try {
-        const info = await FileSystem.getInfoAsync(DIR);
-        if (!info.exists) await FileSystem.makeDirectoryAsync(DIR, { intermediates: true });
-        const files = await FileSystem.readDirectoryAsync(DIR);
-        const map: Record<string, string> = {};
-        files.forEach(f => { map[f.replace('.mp4', '')] = DIR + f; });
-        setDownloaded(map);
-      } catch { /* brak FS (web) — sama transmisja */ }
+        const info = await FileSystem.getInfoAsync(directory);
+        if (!info.exists) await FileSystem.makeDirectoryAsync(directory, { intermediates: true });
+        const files = await FileSystem.readDirectoryAsync(directory);
+        if (mounted) {
+          setDownloaded(
+            Object.fromEntries(
+              files
+                .filter((file) => file.endsWith('.mp4'))
+                .map((file) => [file.slice(0, -4), `${directory}${file}`]),
+            ),
+          );
+        }
+      } catch {
+        // Streaming remains available when the native file system is unavailable.
+      }
     })();
-  }, []);
+    return () => {
+      mounted = false;
+    };
+  }, [directory]);
 
-  const toggleDownload = async (v: VideoItem) => {
-    if (downloaded[v.id]) {
-      await FileSystem.deleteAsync(downloaded[v.id], { idempotent: true }).catch(() => undefined);
-      setDownloaded(({ [v.id]: _drop, ...rest }) => rest);
+  const toggleDownload = async (video: VideoItem) => {
+    if (!directory) {
+      Alert.alert('Tryb offline niedostępny', 'Pobieranie wymaga pełnej wersji aplikacji.');
       return;
     }
-    setBusy(v.id);
+    if (downloaded[video.id]) {
+      await FileSystem.deleteAsync(downloaded[video.id], { idempotent: true }).catch(
+        () => undefined,
+      );
+      setDownloaded((current) => {
+        const next = { ...current };
+        delete next[video.id];
+        return next;
+      });
+      return;
+    }
+
+    setBusy(video.id);
     try {
-      const res = await FileSystem.downloadAsync(v.streamUri, DIR + v.id + '.mp4');
-      setDownloaded(d => ({ ...d, [v.id]: res.uri }));
+      const result = await FileSystem.downloadAsync(video.streamUri, `${directory}${video.id}.mp4`);
+      setDownloaded((current) => ({ ...current, [video.id]: result.uri }));
     } catch {
       Alert.alert('Pobieranie nieudane', 'Sprawdź połączenie i spróbuj ponownie.');
-    } finally { setBusy(null); }
+    } finally {
+      setBusy(null);
+    }
   };
 
-  const items = VIDEOS.filter(v => cat === 'all' || v.category === cat);
-  const source = (v: VideoItem) => ({ uri: downloaded[v.id] ?? v.streamUri });
+  const items = useMemo(
+    () =>
+      VIDEOS.filter(
+        (video) =>
+          (role ? video.forRoles.includes(role) : true) &&
+          (category === 'all' || video.category === category),
+      ),
+    [category, role],
+  );
+  const playerSource = playing ? (downloaded[playing.id] ?? playing.streamUri) : null;
+  const player = useVideoPlayer(playerSource, (instance) => {
+    if (playerSource) instance.play();
+  });
 
   return (
     <Screen>
       <ScrollView showsVerticalScrollIndicator={false}>
-        <Text style={[type.h1, { marginTop: spacing(1) }]}>🎬 Biblioteka wideo</Text>
-        <Text style={type.small}>Materiały z certyfikowanymi specjalistami · streaming i tryb offline</Text>
+        <Text accessibilityRole="header" style={[type.h1, { marginTop: spacing(1) }]}>
+          🎬 Biblioteka wideo
+        </Text>
+        <Text style={type.small}>Materiały dopasowane do roli · streaming i tryb offline</Text>
 
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: spacing(1) }}>
-          <Chip label="Wszystkie" selected={cat === 'all'} onPress={() => setCat('all')} />
-          {CATEGORIES.map(c => <Chip key={c.key} label={c.label} selected={cat === c.key} onPress={() => setCat(c.key)} />)}
+        <View style={styles.categories}>
+          <Chip
+            label="Wszystkie"
+            selected={category === 'all'}
+            onPress={() => setCategory('all')}
+          />
+          {CATEGORIES.map((item) => (
+            <Chip
+              key={item.key}
+              label={item.label}
+              selected={category === item.key}
+              onPress={() => setCategory(item.key)}
+            />
+          ))}
         </View>
 
         {playing && (
           <Card>
-            <Video
-              source={source(playing)}
+            <VideoView
+              player={player}
               style={styles.player}
-              useNativeControls
-              resizeMode={ResizeMode.CONTAIN}
-              shouldPlay
+              nativeControls
+              contentFit="contain"
               accessibilityLabel={`Odtwarzanie: ${playing.title}`}
             />
-            <Pressable accessibilityRole="button" onPress={() => setPlaying(null)} style={{ minHeight: MIN_TOUCH, justifyContent: 'center' }}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => setPlaying(null)}
+              style={styles.closeButton}
+            >
               <Text style={[type.small, { color: colors.primary }]}>Zamknij odtwarzacz ⤫</Text>
             </Pressable>
           </Card>
         )}
 
-        <SectionTitle>{cat === 'all' ? 'Wszystkie materiały' : CATEGORIES.find(c => c.key === cat)?.label}</SectionTitle>
-        {items.map(v => (
-          <Card key={v.id}>
-            <Text style={type.h3}>{v.title}</Text>
-            <Text style={type.small}>🎓 {v.expert} · {v.minutes} min · recenzja: {v.reviewedAt}</Text>
-            <Text style={type.small}>{v.forRoles.includes('father') && v.forRoles.includes('mother') ? 'Dla obojga' : v.forRoles.includes('father') ? '👨 Dla taty' : '👩 Dla mamy'}{downloaded[v.id] ? ' · 📥 offline' : ''}</Text>
-            <View style={{ flexDirection: 'row', marginTop: spacing(1) }}>
-              <Pressable accessibilityRole="button" accessibilityLabel={`Odtwórz ${v.title}`} onPress={() => setPlaying(v)} style={[styles.btn, { backgroundColor: colors.primary }]}>
-                <Text style={{ color: '#fff', fontSize: 16 }}>▶ Odtwórz</Text>
+        <SectionTitle>
+          {category === 'all'
+            ? 'Materiały dla Ciebie'
+            : CATEGORIES.find((item) => item.key === category)?.label}
+        </SectionTitle>
+        {items.map((video) => (
+          <Card key={video.id}>
+            <Text style={type.h3}>{video.title}</Text>
+            <Text style={type.small}>
+              🎓 {video.expert} · {video.minutes} min · recenzja: {video.reviewedAt}
+            </Text>
+            <Text style={type.small}>
+              {downloaded[video.id] ? '📥 dostępne offline' : 'Streaming'}
+            </Text>
+            <View style={styles.actions}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Odtwórz ${video.title}`}
+                onPress={() => setPlaying(video)}
+                style={[styles.button, { backgroundColor: colors.primary }]}
+              >
+                <Text style={styles.primaryButtonText}>▶ Odtwórz</Text>
               </Pressable>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={downloaded[v.id] ? `Usuń z offline: ${v.title}` : `Pobierz offline: ${v.title}`}
-                disabled={busy === v.id}
-                onPress={() => toggleDownload(v)}
-                style={[styles.btn, { borderWidth: 1.5, borderColor: colors.accent, marginLeft: spacing(1) }]}>
-                <Text style={{ color: colors.accent, fontSize: 16 }}>
-                  {busy === v.id ? '⏳…' : downloaded[v.id] ? '🗑 Usuń offline' : '⬇ Offline'}
+                accessibilityLabel={
+                  downloaded[video.id]
+                    ? `Usuń z offline: ${video.title}`
+                    : `Pobierz offline: ${video.title}`
+                }
+                disabled={busy === video.id}
+                onPress={() => void toggleDownload(video)}
+                style={[styles.button, styles.downloadButton]}
+              >
+                <Text style={styles.downloadText}>
+                  {busy === video.id ? '⏳…' : downloaded[video.id] ? '🗑 Usuń' : '⬇ Offline'}
                 </Text>
               </Pressable>
             </View>
           </Card>
         ))}
+
         <Card style={{ backgroundColor: colors.surfaceAlt }}>
-          <Text style={type.small}>Demo: strumienie testowe. W produkcji każdy materiał ma napisy i transkrypcję (WCAG 1.2.2) oraz datę recenzji specjalisty — jak w bibliotece tekstowej.</Text>
+          <Text style={type.small}>
+            Katalog demonstracyjny. Przed publikacją każdy materiał powinien mieć własny stream,
+            napisy i transkrypcję (WCAG 1.2.2) oraz potwierdzoną recenzję specjalisty.
+          </Text>
         </Card>
       </ScrollView>
     </Screen>
@@ -106,6 +182,18 @@ export default function VideoLibraryScreen() {
 }
 
 const styles = StyleSheet.create({
+  categories: { flexDirection: 'row', flexWrap: 'wrap', marginTop: spacing(1) },
   player: { width: '100%', aspectRatio: 16 / 9, borderRadius: 12, backgroundColor: '#000' },
-  btn: { borderRadius: 10, paddingHorizontal: 14, minHeight: MIN_TOUCH, justifyContent: 'center', alignItems: 'center' },
+  closeButton: { minHeight: MIN_TOUCH, justifyContent: 'center' },
+  actions: { flexDirection: 'row', marginTop: spacing(1) },
+  button: {
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    minHeight: MIN_TOUCH,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  primaryButtonText: { color: '#fff', fontSize: 16 },
+  downloadButton: { borderWidth: 1.5, borderColor: colors.accent, marginLeft: spacing(1) },
+  downloadText: { color: colors.accent, fontSize: 16 },
 });

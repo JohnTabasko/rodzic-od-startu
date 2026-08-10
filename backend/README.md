@@ -1,89 +1,100 @@
-# Backend — Rodzic od Startu (v0.5)
+# Backend — Rodzic od Startu
 
-REST API: konta anonimowe (JWT), parowanie partnerów, synchronizacja wspólnego kalendarza i checklist.
+REST API dla anonimowych kont, trybu pary, synchronizacji wspólnego kalendarza i checklist,
+asystenta oraz moderowanej społeczności.
 
-## Szybki start
+## Uruchomienie
 
 ```bash
-npm install
-npm run dev            # tryb dev: dane w data.json
+npm ci
+npm run dev
 ```
 
-## PostgreSQL (produkcyjny sterownik)
+API działa domyślnie na `http://localhost:3000`. Sprawdzenie:
 
 ```bash
-docker compose up -d   # PostgreSQL 16
+curl http://localhost:3000/api/health
+```
+
+Brak `DATABASE_URL` oznacza lokalny `JsonStorage`. Runtime artifacts (`data.json`,
+`community.json`, `assistant.log`) są tworzone w katalogu backendu i nie są śledzone przez Git.
+
+## PostgreSQL
+
+```bash
+docker compose up -d
 DATABASE_URL=postgres://postgres:dev@localhost:5432/rodzic \
-JWT_SECRET=$(openssl rand -hex 32) \
-npm run dev            # auto-migracja schematu przy starcie
+JWT_SECRET="$(openssl rand -hex 32)" \
+CORS_ORIGIN=http://localhost:8081 \
+npm run dev
 ```
 
-Sterownik wybierany automatycznie: `DATABASE_URL` ustawione → `PgStorage`, inaczej `JsonStorage` (dev). Interfejs `Storage` (`src/storage.ts`) mapuje się 1:1 na docelowe repozytoria NestJS.
+Połączenie z `DATABASE_URL` przełącza backend na `PgStorage`, a migracje schematu wykonują się
+przy starcie.
 
-## Bezpieczeństwo
-- Tokeny **JWT (HS256, exp 90 dni)** — w bazie przechowywany **wyłącznie hash SHA-256** tokenu
-- Sfałszowany podpis/payload → 401
-- Docelowo: OIDC (zewnętrzny issuer, JWKS), Apple/Google Sign-In; migracja = wymiana `verifyToken`
-- `DELETE /api/account` — kaskadowe usunięcie użytkownika i członkostwa w parze (RODO)
+## Zmienne środowiskowe
 
-## Sync (merge)
-- Zdarzenia: per-rekord **last-write-wins** po `updatedAt` + **tombstone** (`deletedIds`) dla propagacji usunięć
-- Checklisty: timestamp per klucz + soft-OR (raz odhaczone zostaje)
-- `GET /api/sync/events?since=<ISO>` — synchronizacja przyrostowa
+Pełny przykład znajduje się w `.env.example`.
 
-## Endpointy
-| Metoda | Ścieżka | Opis |
-|---|---|---|
-| GET | `/api/health` | status + tryb storage |
-| POST | `/api/auth/anon` | konto anonimowe → JWT |
-| POST | `/api/pair/create` · `pair/join` · `pair/leave` | parowanie kodem 6-znakowym |
-| GET | `/api/pair/status` | status pary |
-| PUT/GET | `/api/sync/events` | wspólny kalendarz (+tombstone) |
-| PUT/GET | `/api/sync/checklist` | wspólne checklisty |
-| DELETE | `/api/account` | usunięcie konta |
+| Zmienna             | Opis                                                     |
+| ------------------- | -------------------------------------------------------- |
+| `NODE_ENV`          | `development`, `test` lub `production`                   |
+| `PORT`              | port HTTP, domyślnie `3000`                              |
+| `DATA_DIR`          | opcjonalny katalog runtime dla JSON/logów                |
+| `DATABASE_URL`      | wymagane w produkcji; bez niego JSON storage             |
+| `JWT_SECRET`        | wymagany w produkcji, minimum 32 znaki                   |
+| `CORS_ORIGIN`       | jawna lista originów rozdzielona przecinkami w produkcji |
+| `ADMIN_TOKEN`       | token kolejki moderacji                                  |
+| `OPENAI_API_KEY`    | opcjonalny retrieval/LLM                                 |
+| `GOOGLE_CLIENT_IDS` | dozwolone aud dla Google OIDC                            |
+| `APPLE_CLIENT_ID`   | dozwolone aud dla Apple OIDC                             |
+| `SOCIAL_DEV_MODE`   | tylko lokalne testy, musi być wyłączone w produkcji      |
 
-## 🤖 Asystent AI (v0.6 — krok RAG)
+Konfiguracja jest walidowana podczas startu. Produkcja nie uruchomi się z domyślnym sekretem,
+JSON storage, wildcardem CORS ani trybem social dev.
 
-`POST /api/assistant/ask` `{ "question": "…" }` →
-`{ answer, source, docId, reviewedAt, isSafety }`
+## API
 
-- **Baza wiedzy** (`src/knowledge.ts`): każdy dokument ma `id`, źródło i **datę recenzji medycznej** — pola te trafiają do cytowania i logów; produkcyjnie z CMS + pgvector
-- **Guardrails twarde:** frazy alarmowe/kryzysowe → zawsze protokół bezpieczeństwa (112/999, 800 70 22 22), sprawdzane przed dopasowaniem
-- **Log jakości** (`assistant.log`, JSONL): `ts, q_hash, docId, isSafety, latencyMs` — **bez treści pytań** (pseudonimizacja, RODO) → metryki: pokrycie bazy, % fallbacków, czas odpowiedzi
-- Walidacja wejścia (max 1000 znaków, niepuste → 400)
+| Metoda   | Ścieżka               | Opis                                     |
+| -------- | --------------------- | ---------------------------------------- |
+| GET      | `/api/health`         | status i aktywny storage                 |
+| POST     | `/api/auth/anon`      | konto anonimowe i JWT                    |
+| POST     | `/api/auth/social`    | Apple/Google OIDC → lokalny JWT          |
+| POST     | `/api/pair/create`    | utworzenie kodu pary                     |
+| POST     | `/api/pair/join`      | dołączenie kodem                         |
+| GET      | `/api/pair/status`    | liczba członków i rola partnera          |
+| POST     | `/api/pair/leave`     | rozłączenie                              |
+| PUT/GET  | `/api/sync/events`    | kalendarz, LWW i tombstones              |
+| PUT/GET  | `/api/sync/checklist` | checklista z soft-OR                     |
+| DELETE   | `/api/account`        | usunięcie konta i członkostwa            |
+| POST     | `/api/assistant/ask`  | Q&A z guardrails                         |
+| GET/POST | `/api/community/...`  | grupy, posty i automoderacja             |
+| GET/POST | `/api/moderation/...` | kolejka moderatora przez `x-admin-token` |
 
-## 🛡 Hardening API (v0.7)
+Payloady wydarzeń, checklist i postów są walidowane po stronie API. Daty kalendarza muszą być
+prawidłowymi datami `YYYY-MM-DD`, a timestampy kanonicznym UTC ISO-8601.
 
-- **helmet**: HSTS, `nosniff`, `X-Frame-Options`, `Referrer-Policy`, CSP, wyłączone `X-Powered-By`
-- **Rate-limiting**: globalny 300/15 min + wrażliwe trasy: `/auth/anon` 10/min, `/assistant/ask` 20/min (standardowe nagłówki `RateLimit-*`)
-- **CORS** konfigurowalny przez `CORS_ORIGIN` (lista domen po przecinku; dev: otwarte)
-- Spójne odpowiedzi błędów JSON: `404 NOT_FOUND`, `500 INTERNAL` — bez leaku stacka
-- ✅ Test E2E: nagłówki bezpieczeństwa obecne, limity odpalają dokładnie przy 10 i 20 (429), klient aplikacji pokazuje przyjazny komunikat przy `RATE_LIMITED`
+## Synchronizacja
 
-## 🧠 Retrieval semantyczny + LLM (v0.8 — krok RAG 2)
+- wydarzenia: last-write-wins po `updatedAt`;
+- usunięcia: tombstones przekazywane przez `deletedIds`;
+- checklista: timestamp per klucz i soft-OR, więc odhaczenie nie zostaje przypadkowo cofnięte;
+- synchronizacja wymaga dokładnie dwóch członków pary.
 
-- **`retrieval.ts`**: wektoryzacja n-gramów (dim 384, działa offline) lub **OpenAI embeddings** przy `OPENAI_API_KEY` (cache w RAM); interfejs zgodny z docelowym `ORDER BY embedding <=> $1` (pgvector)
-- Scoring: `max(semantyka, 0.6·semantyka + 0.4·bonus słownikowy)`, próg kalibrowany testem — **8/8** przypadków (parafrazy, literówki, out-of-scope → fallback)
-- **Opcjonalny LLM** (`gpt-4o-mini`): odpowiada WYŁĄCZNIE z pobranego dokumentu z wymuszonym cytatem docId; przy braku klucza/błędu → odpowiedź ekstrakcyjna. Guardrails zawsze pierwsze.
-- Odpowiedź zawiera `mode` (crisis/extractive/llm/fallback) i `score`; log jakości rozszerzony o te pola
-- Zmienne: `OPENAI_API_KEY` (opcjonalne) — bez niej system w pełni działa ekstrakcyjnie
+## Asystent
 
-## 🔑 Apple/Google Sign-In (v0.9 — OIDC)
+`POST /api/assistant/ask` zwraca `answer`, `source`, `docId`, `reviewedAt`, `isSafety`, `mode` i `score`.
 
-`POST /api/auth/social` `{ provider: "google"|"apple", idToken }` → `{ userId, token, role, isNew }`
+Guardrails są wykonywane przed retrievalem. Log jakości zawiera hash pytania i metadane,
+ale nie zapisuje jego treści. Przy braku `OPENAI_API_KEY` działa lokalna wektoryzacja i odpowiedź
+ekstrakcyjna.
 
-- Weryfikacja **id_token po stronie serwera**: JWKS dostawcy (cache), RS256, kontrola `iss` + `aud` + `exp`
-- **find-or-create** po `external_sub` (unikalny indeks; kolumny `provider`/`external_sub`/`email` dodane migracją w PgStorage)
-- Zmienne: `GOOGLE_CLIENT_IDS` (csv), `APPLE_CLIENT_ID` — bez nich `aud` nie jest ograniczane (tylko dev)
-- `SOCIAL_DEV_MODE=true` → testy E2E tokenami z `dev:true` (bez podpisu) — **wyłączyć w produkcji**
-- ✅ Test E2E: pierwsze logowanie tworzy konto, ponowne logowanie tym samym `sub` → to samo konto; token bez flagi dev → 401; JWT z social działa na pozostałych trasach
-- Klient niezbędny w aplikacji: `expo-auth-session` + skonfigurowane Client ID (Google) / `expo-apple-authentication` (iOS) → funkcja `socialAuth()` w `services/api.ts` już gotowa
+## Jakość
 
-## 👥 Społeczność moderowana (v1.0)
+```bash
+npm run typecheck
+npm run build
+npm test
+```
 
-- 4 grupy demo (Pierwsze dziecko · Tata strefa · Karmienie · Sen); lista bez treści prywatnych użytkownika
-- **Moderacja hybrydowa**: automoderacja (wzorce porad medycznych: dawkowanie, nazwy leków, antyszczepionkowość; wzorce wyzwisk) → `flagged` do kolejki człowieka; neutralne treści → auto-approve
-- Autor: **pseudonim** (hash ID) dla innych — data minimalization
-- Kolejka moderatora: `x-admin-token` (env `ADMIN_TOKEN`) · `GET /api/moderation/queue` · `POST /api/moderation/:id {action}`
-- ✅ Test E2E: neutralny post approved · porada medyczna flagged z komunikatem edukacyjnym · 403 bez tokena admina · reject działa
-- Persystencja demo: `community.json` (docelowo: tabele PostgreSQL)
+Testy znajdują się w `tests/` i wykorzystują `node:test`.

@@ -1,58 +1,72 @@
-# ✅ PRE-LAUNCH CHECKLIST — „Rodzic od Startu"
+# PRE-LAUNCH CHECKLIST
 
-Definition of Done przed publikacją (rozwinięcie Załącznika A dokumentu koncepcyjnego). Legenda: ✅ gotowe · 🔧 wymaga pracy/środowiska · ⬜ do zaplanowania.
+Legenda: ✅ wykonane w kodzie · 🔧 wymaga konfiguracji/audytu/urządzenia · ⬜ planowane.
 
 ## 1. Prawo i RODO
-- ✅ Eksport danych użytkownika (JSON) i usunięcie konta w aplikacji
-- ✅ Minimalizacja danych (konta anonimowe; pola zdrowotne oznaczone)
-- ✅ Dane i logi bez treści wrażliwych (log asystenta: hash pytań)
-- 🔧 DPIA podpisana z IOD; rejestr czynności przetwarzania
-- 🔧 Polityka prywatności + regulamin PL (prawnik), zgody granularne w onboarding
-- 🔧 Umowy powierzenia z poddostawcami (hosting UE, OpenAI — jeśli używany, inżynier transferu danych do USA!)
-- 🔧 Ocena MDR: aplikacja informacyjna (nie wyrób medyczny) — opinia prawna + zastrzeżenia w UI
+
+- ✅ eksport danych do JSON;
+- ✅ usunięcie konta lokalnego i backendowego przez `DELETE /api/account`;
+- ✅ minimalizacja danych: konto anonimowe, prywatne dane zdrowotne poza synchronizacją pary;
+- ✅ log asystenta nie zapisuje treści pytania;
+- 🔧 DPIA, rejestr czynności przetwarzania i konsultacja z IOD;
+- 🔧 polityka prywatności, regulamin, zgody i procedura praw osób;
+- 🔧 umowy powierzenia z hostingiem, dostawcami AI i analityki;
+- 🔧 ocena MDR oraz kwalifikacja aplikacji jako produktu informacyjnego.
 
 ## 2. Bezpieczeństwo
-- ✅ Szyfrowanie lokalne (SecureStore), JWT z hashed storage, helmet, rate-limit, spójne 404/500
-- ✅ Tombstone/merge bez konfliktów współbieżnych w PgStorage (ON CONFLICT)
-- 🔧 Pentest zewnętrzny aplikacji + API przed startem
-- 🔧 Sekrety w managerze; rotacja `JWT_SECRET` i `ADMIN_TOKEN`; `SOCIAL_DEV_MODE=false`
-- 🔧 Kopie PG + **test odtworzenia backupu** (udokumentowany)
-- 🔧 Procedura naruszeń (72 h) + kontakt security@
+
+- ✅ JWT HS256 z przechowywaniem hashy tokenów;
+- ✅ jawne wymuszenie silnego `JWT_SECRET` i PostgreSQL w produkcji;
+- ✅ Helmet, CORS z konfiguracją produkcyjną, rate limiting i walidacja payloadów;
+- ✅ LWW/tombstones wydarzeń oraz soft-OR checklist;
+- ✅ usunięcie runtime data files z repozytorium;
+- ✅ `npm audit --omit=dev` backendu nie zgłasza podatności po wymuszeniu bezpiecznego `ip-address`;
+- 🔧 `npm audit --omit=dev` frontendu nadal raportuje 11 wysokich podatności transitive w Metro/image-size używanych przez Expo SDK 57 — wymagają aktualizacji upstream, nie wymuszonego `npm audit fix`;
+- 🔧 test penetracyjny i przegląd zależności;
+- 🔧 sekrety w secret managerze, rotacja i kontrola dostępu;
+- 🔧 backup PostgreSQL i udokumentowany test odtworzenia;
+- 🔧 TLS/reverse proxy, monitoring, alerty i procedura naruszeń;
+- 🔧 audyt fallbacku SecureStore → AsyncStorage — fallback nie zapewnia szyfrowania.
 
 ## 3. Medycyna i treści
-- 🔧 **100% treści z podpisem recenzenta rady medycznej** (położnik, neonatolog, psycholog perinatalny, IBCLC) — w tym demo-treści z `content.ts` i `knowledge.ts`
-- 🔧 Daty recenzji widoczne przy wiedzy/asystencie (mechanizm ✅ — dane do rewizji)
-- 🔧 Ustalony cykl rewalidacji (12 mies. lub przy zmianie wytycznych: PSO, standardy prenatalne, ERC)
-- 🔧 Test red-team asystenta: 50+ wariantów objawów alarmowych → 100% ingerencji guardrails
-- ⬜ Program „zgłoś odpowiedź AI" z SLA reakcji redakcji
 
-## 4. Dostępność (WCAG 2.1 AA)
-- ✅ Kontrasty zmierzone skryptem (10/10 ≥ 4.5:1), role a11y, live-region, 44×44, duży tekst
-- 🔧 Pełny przepływ z **TalkBack i VoiceOver** na urządzeniach fizycznych (onboarding → logowanie nastroju → asystent)
-- 🔧 Test 200% skalowania bez scrolla poziomego; napisy/transkrypcje wszystkich wideo (1.2.2)
-- 🔧 Deklaracja dostępności w sklepach + strona dostępności
+- 🔧 recenzja wszystkich treści przez właściwy zespół medyczny;
+- 🔧 podpis recenzenta, źródło, data i cykl ponownej weryfikacji;
+- 🔧 aktualizacja PSO, standardów prenatalnych, zaleceń dotyczących snu i zdrowia psychicznego;
+- 🔧 red-team guardrails: minimum 50 wariantów objawów alarmowych;
+- 🔧 procedura zgłoszenia błędnej odpowiedzi i SLA redakcji;
+- 🔧 formalny disclaimer w aplikacji i polityka odpowiedzialności.
 
-## 5. Jakość i wydajność
-- ✅ Typecheck obu części w CI-like flow; testy E2E backendu (sync, auth, asystent, społeczność, hardening)
-- 🔧 Crash-free ≥ 99,5% (Sentry/Crashlytics); p95 API < 300 ms pod obciążeniem (k6)
-- 🔧 Testy na matrycy urządzeń (Android 10–15, iOS 16+), tryb offline wszystkich modułów offline-capable
-- ⬜ Automatyzacja E2E w CI (GitHub Actions: typecheck + testy backendu)
+## 4. Dostępność
 
-## 6. Sklep i marketing
-- 🔧 Zrzuty ekranu PL (obie role!), opis, słowa kluczowe, privacy labels (App Store), Data safety (Play)
-- 🔧 Klasyfikacja wiekowa, strona produktu, wsparcie + FAQ
-- ⬜ Landing + plan soft-launch (beta z TestFlight/Play Internal, 100–200 rodziców)
+- ✅ kontrasty, role accessibility, live-region asystenta, obszary dotyku min. 44 pt;
+- ✅ przełącznik dużego tekstu;
+- 🔧 pełny przepływ TalkBack i VoiceOver na urządzeniach fizycznych;
+- 🔧 test powiększenia 200% bez poziomego scrolla;
+- 🔧 napisy i transkrypcje wszystkich materiałów wideo;
+- 🔧 deklaracja dostępności.
 
-## 7. Operacje i produkt
-- 🔧 Monitoring: uptime API, kolejka moderacji SLA < 24 h, alert logu asystenta (skoki `crisis`/`fallback`)
-- 🔧 Test onboardingu z 10+ rodzicami (obie role); ankieta NPS w aplikacji po 7 dniach
-- ⬜ Panel redakcyjny CMS (treści/wideo/FAQ) — obecnie edycja plików `data/*`
-- ⬜ Roadmap post-launch: pełny RAG+LLM, CMS, panel moderatora web, i18n kolejne języki
+## 5. Jakość
 
-> **Bramka release:** punkty 🔧 z sekcji 1–4 muszą być ✅. Sekcje 5–7 według oceny ryzyka zespołu.
+- ✅ typecheck frontendu i backendu;
+- ✅ backend build oraz testy `node:test`;
+- ✅ formatowanie i kontrola Prettier;
+- 🔧 testy integracyjne z PostgreSQL;
+- 🔧 testy urządzeniowe Android 10–15 i iOS 16+;
+- 🔧 E2E onboarding → para → sync → rozparowanie → usunięcie konta;
+- 🔧 crash reporting, p95 API i testy obciążeniowe;
+- ⬜ CI z `npm ci`, `npm run verify`, testami backendu i audytem zależności.
 
-## 8. Zależności (npm audit)
-- Backend: 0 podatności ✅
-- Aplikacja: 18 raportów (12 moderate/5 high/1 critical) — **wszystkie w dev-dependency** Expo/Metro (np. cacache), nie w kodzie produkcyjnym apki
-- Zasada: NIE `npm audit fix --force` (łamie przypięcie wersji SDK 52 + RN 0.76); naprawa = aktualizacja do nowszego Expo SDK (zaakceptować podczas pierwszego cyklu upgrade'ów) + cykliczny przegląd przy każdym release
-- 🔧 przed launch: `npm audit --omit=dev` jako bramka CI (tylko podatności runtime mają znaczenie dla produktu)
+## 6. Integracje i sklep
+
+- 🔧 prawdziwe materiały wideo z CDN, napisami i transkrypcjami;
+- 🔧 konfiguracja Google/Apple Sign-In i natywnych przycisków;
+- 🔧 pełna integracja Health Connect/HealthKit, zgody i privacy manifest;
+- 🔧 ikony, splash screen, opis uprawnień i Data Safety;
+- 🔧 klasyfikacja wiekowa, privacy labels i strona wsparcia;
+- 🔧 TestFlight/Play Internal z grupą pilotażową.
+
+## Bramka release
+
+Publikacja nie powinna nastąpić, dopóki punkty 🔧 z sekcji 1–4 nie zostaną zamknięte,
+a treści demonstracyjne nie zostaną zastąpione zatwierdzonym materiałem produkcyjnym.

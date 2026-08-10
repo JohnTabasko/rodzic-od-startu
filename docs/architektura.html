@@ -33,7 +33,7 @@ footer{margin-top:40px;color:var(--muted);font-size:.8rem}
 </head>
 <body>
 <h1>🤱 Rodzic od Startu</h1>
-<p class="sub">Architektura systemu · wersja v1.0 · od poczęcia do 3. roku życia · iOS + Android</p>
+<p class="sub">Architektura systemu · MVP v0.1.0 · od poczęcia do 3. roku życia · iOS + Android</p>
 
 <h2>🗺 Mapa systemu</h2>
 <div class="flow">
@@ -44,7 +44,7 @@ footer{margin-top:40px;color:var(--muted);font-size:.8rem}
 <div class="flow">
   <div class="node p">🔐 SecureStore</div>
   <div class="node p">🔔 Push lokalne</div>
-  <div class="node p">🎬 expo-av</div>
+  <div class="node p">🎬 expo-video</div>
   <div class="node p">⌚ Health Connect/Kit</div>
   <span class="arrow">zewn.:</span>
   <div class="node">JWKS Google/Apple</div>
@@ -59,7 +59,7 @@ footer{margin-top:40px;color:var(--muted);font-size:.8rem}
 <div class="small" style="margin-top:6px">Auto-sync debounce 3 s · szyfrowana trwałość · fallback offline asystenta</div></div>
 <div class="card"><h3>Stan (Zustand + persist)</h3><div class="small">profil · wydarzenia+tombs · notatki · nastrój · waga · ruchy · brzuch · ciśnienie · checklisty · para</div></div>
 <div class="card"><h3>Dostępność</h3><div class="small">kontrasty 10/10 ≥4.5:1 (audyt skryptowy) · role a11y · live-region czatu · 44×44 · duży tekst dynamiczny</div></div>
-<div class="card"><h3>Prywatność</h3><div class="small">eksport JSON · kasowanie konta · dane zdrowia szyfrowane · społeczność/i18n opcjonalne</div></div>
+<div class="card"><h3>Prywatność</h3><div class="small">eksport JSON · kasowanie konta lokalnego/backendowego · SecureStore na mobile · społeczność/i18n opcjonalne</div></div>
 <div class="card"><h3>Treści demo</h3><div class="small">tydzień po tygodniu · mies. po mies. · wideo z recenzją · (produkcja: CMS)</div></div>
 </div>
 
@@ -94,7 +94,7 @@ footer{margin-top:40px;color:var(--muted);font-size:.8rem}
 </div>
 <div class="flow"><span class="arrow">gałęzie:</span><div class="node">objawy alarmowe → 🆘 112/999, 800 70 22 22</div><div class="node">brak klucza AI → ekstraktywne</div><div class="node">score&lt;próg → fallback uczciwy</div></div>
 
-<h2>📊 Status wdrożenia (10 wydań)</h2>
+<h2>📊 Status obecnego MVP</h2>
 <table>
 <tr><th>Wersja</th><th>Zakres</th><th>Status</th></tr>
 <tr><td>v0.1</td><td>MVP: role, treści, kalendarz, notatki, checklisty</td><td><span class="badge b-ok">✅</span></td></tr>
@@ -104,11 +104,11 @@ footer{margin-top:40px;color:var(--muted);font-size:.8rem}
 <tr><td>v0.6</td><td>Asystent na serwerze (log jakości, cytaty)</td><td><span class="badge b-ok">✅</span></td></tr>
 <tr><td>v0.7</td><td>Hardening API (helmet · rate-limit · CORS)</td><td><span class="badge b-ok">✅</span></td></tr>
 <tr><td>v0.8</td><td>Retrieval semantyczny + LLM-ready (8/8 kalibracja)</td><td><span class="badge b-ok">✅</span></td></tr>
-<tr><td>v0.9</td><td>Apple/Google Sign-In (OIDC, find-or-create)</td><td><span class="badge b-ok">✅</span></td></tr>
-<tr><td>v1.0</td><td>Wideo ✅ · Społeczność ✅ · Wearables</td><td><span class="badge b-cfg">✅ / konfig. build</span></td></tr>
+<tr><td>OIDC</td><td>Weryfikacja Apple/Google po stronie backendu</td><td><span class="badge b-cfg">🔧 Client ID + natywne UI</span></td></tr>
+<tr><td>Media/community</td><td>Wideo demonstracyjne · społeczność moderowana · kroki</td><td><span class="badge b-cfg">🔧 produkcyjna treść/config</span></td></tr>
 <tr><td>—</td><td>Pre-launch (DPIA, audits, natywne przyciski Sign-In, prawdziwe nagrania wideo, PG live)</td><td><span class="badge b-cfg">PRELAUNCH.md</span></td></tr>
 </table>
 
-<footer>Rodzic od Startu v1.0 · dokumentacja: README.md (root) · BUILD.md · PRELAUNCH.md · backend/README.md · silnik treści z datami recenzji medycznej · ego sum qui sum, treści demo wymagają weryfikacji rady medycznej przed publikacją.</footer>
+<footer>Rodzic od Startu MVP v0.1.0 · dokumentacja: README.md · BUILD.md · PRELAUNCH.md · backend/README.md · treści demonstracyjne wymagają weryfikacji rady medycznej przed publikacją.</footer>
 </body>
 </html>

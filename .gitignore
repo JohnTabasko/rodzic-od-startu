@@ -1,0 +1,49 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+.expo/
+.expo-shared/
+web-build/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+*.local
+
+# Expo / native build artifacts
+.android/
+.ios/
+*.jks
+*.keystore
+*.p8
+*.p12
+*.mobileprovision
+
+# Runtime data created by the development backend
+backend/data.json
+backend/community.json
+backend/assistant.log
+data.json
+community.json
+assistant.log
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# Test / coverage
+coverage/
+.nyc_output/

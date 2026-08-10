@@ -3,17 +3,22 @@
   "version": "0.1.0",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "start": "node dist/server.js",
-    "dev": "tsc -p tsconfig.json && node dist/server.js"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && node --test dist/tests",
+    "start": "node dist/src/server.js",
+    "dev": "npm run build && node dist/src/server.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^4.21.2",
-    "express-rate-limit": "^8.6.0",
+    "express-rate-limit": "^8.6.2",
     "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.3",
     "jwks-rsa": "^4.1.0",
     "pg": "^8.22.0"
+  },
+  "overrides": {
+    "ip-address": "^10.5.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",

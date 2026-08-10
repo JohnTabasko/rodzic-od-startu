@@ -1,21 +1,44 @@
 /**
- * JWT (docelowo OIDC — wystawca zewnętrzny, LWT/JWKS):
- * tu na czas MVP token anonimowy podpisujemy HS256 (sekret z env), a middleware
- * weryfikuje podpis + exp. Token NIE jest przechowywany wprost — tylko sha256.
+ * JWT authentication for the anonymous MVP account flow.
+ * Production deployments must provide a strong JWT_SECRET through the environment.
  */
+import crypto from 'node:crypto';
 import jwt from 'jsonwebtoken';
-import crypto from 'crypto';
+import { config } from './config';
 
-const SECRET = process.env.JWT_SECRET ?? 'dev-secret-change-me';
-export const hashToken = (token: string) => crypto.createHash('sha256').update(token).digest('hex');
-
-export function signToken(userId: string, role: string): string {
-  return jwt.sign({ sub: userId, role }, SECRET, { expiresIn: '90d', issuer: 'rodzic-od-startu' });
+export interface AuthPayload {
+  sub: string;
+  role: string;
 }
 
-export function verifyToken(token: string): { sub: string; role: string } | null {
+export const hashToken = (token: string): string =>
+  crypto.createHash('sha256').update(token).digest('hex');
+
+export function signToken(userId: string, role: string): string {
+  return jwt.sign({ sub: userId, role }, config.jwtSecret, {
+    algorithm: 'HS256',
+    expiresIn: '90d',
+    issuer: 'rodzic-od-startu',
+  });
+}
+
+export function verifyToken(token: string): AuthPayload | null {
+  if (!token || token.length > 4096) return null;
+
   try {
-    const p = jwt.verify(token, SECRET, { issuer: 'rodzic-od-startu' }) as jwt.JwtPayload;
-    return p.sub ? { sub: p.sub, role: String(p.role) } : null;
-  } catch { return null; }
+    const payload = jwt.verify(token, config.jwtSecret, {
+      algorithms: ['HS256'],
+      issuer: 'rodzic-od-startu',
+    }) as jwt.JwtPayload;
+
+    return payload.sub ? { sub: payload.sub, role: String(payload.role ?? 'other') } : null;
+  } catch {
+    return null;
+  }
+}
+
+export function bearerToken(header: string | undefined): string | null {
+  if (!header) return null;
+  const match = /^Bearer\s+([^\s]+)$/i.exec(header.trim());
+  return match?.[1] ?? null;
 }

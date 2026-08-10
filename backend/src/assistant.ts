@@ -1,8 +1,9 @@
 // Asystent: guardrails (twarde) → retrieval semantyczny → (opcjonalnie LLM) → odpowiedź z cytatem.
 // Log jakości JSONL: hash pytania, docId, tryb, score, latency — bez treści pytania (RODO).
-import fs from 'fs';
-import path from 'path';
-import crypto from 'crypto';
+import fs from 'node:fs';
+import crypto from 'node:crypto';
+import { runtimeFile } from './runtime';
+import { config } from './config';
 import { SAFETY_KEYWORDS, CRISIS_TEXT, FALLBACK_TEXT } from './knowledge';
 import { retrieve } from './retrieval';
 
@@ -16,21 +17,27 @@ export interface AskResult {
   score?: number;
 }
 
-const LOG_FILE = path.join(process.cwd(), 'assistant.log');
+const LOG_FILE = runtimeFile('assistant.log');
 const THRESHOLD = 0.28; // min. score dopasowania (kalibrowane testem E2E)
 
 function makeExtractive(top: NonNullable<Awaited<ReturnType<typeof retrieve>>[0]>): AskResult {
   return {
     answer: top.doc.answer,
     source: `${top.doc.source} · ${top.doc.title}`,
-    docId: top.doc.id, reviewedAt: top.doc.reviewedAt,
-    isSafety: false, mode: 'extractive', score: top.score,
+    docId: top.doc.id,
+    reviewedAt: top.doc.reviewedAt,
+    isSafety: false,
+    mode: 'extractive',
+    score: top.score,
   };
 }
 
 /** Opcjonalny LLM: wymusza odpowiedź WYŁĄCZNIE z dokumentu + cytat [docId]. */
-async function askLLM(question: string, top: NonNullable<Awaited<ReturnType<typeof retrieve>>[0]>): Promise<string | null> {
-  const key = process.env.OPENAI_API_KEY;
+async function askLLM(
+  question: string,
+  top: NonNullable<Awaited<ReturnType<typeof retrieve>>[0]>,
+): Promise<string | null> {
+  const key = config.openAiApiKey;
   if (!key) return null;
   try {
     const ctrl = new AbortController();
@@ -44,33 +51,58 @@ async function askLLM(question: string, top: NonNullable<Awaited<ReturnType<type
         temperature: 0.2,
         max_tokens: 300,
         messages: [
-          { role: 'system', content:
-            'Jesteś asystentem rodziców w aplikacji "Rodzic od Startu". ' +
-            'Odpowiadaj po polsku, ciepło i zwięźle (max 120 słów), WYŁĄCZNIE na podstawie DOKUMENTU poniżej. ' +
-            'Nie diagnozuj, nie podawaj dawek leków. Jeśli dokument nie zawiera odpowiedzi, powiedz wprost i zasugeruj kontakt z lekarzem/położną. ' +
-            'Na końcu odpowiedzi ZAWSZE dopisz linię: Źródło: ' + top.doc.id },
-          { role: 'user', content: `DOKUMENT (${top.doc.title}, recenzja ${top.doc.reviewedAt}):\n${top.doc.answer}\n\nPYTANIE: ${question}` },
+          {
+            role: 'system',
+            content:
+              'Jesteś asystentem rodziców w aplikacji "Rodzic od Startu". ' +
+              'Odpowiadaj po polsku, ciepło i zwięźle (max 120 słów), WYŁĄCZNIE na podstawie DOKUMENTU poniżej. ' +
+              'Nie diagnozuj, nie podawaj dawek leków. Jeśli dokument nie zawiera odpowiedzi, powiedz wprost i zasugeruj kontakt z lekarzem/położną. ' +
+              'Na końcu odpowiedzi ZAWSZE dopisz linię: Źródło: ' +
+              top.doc.id,
+          },
+          {
+            role: 'user',
+            content: `DOKUMENT (${top.doc.title}, recenzja ${top.doc.reviewedAt}):\n${top.doc.answer}\n\nPYTANIE: ${question}`,
+          },
         ],
       }),
     });
     clearTimeout(t);
     if (!res.ok) return null;
-    const json = await res.json() as any;
+    const json = (await res.json()) as any;
     const text: string = json?.choices?.[0]?.message?.content ?? '';
     return text.trim() || null; // wymuszony cytat docId jest częścią promptu
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 export async function answer(question: string): Promise<AskResult> {
   const q = question.toLowerCase();
   // 1) Guardrails mają zawsze pierwszeństwo
-  if (SAFETY_KEYWORDS.some(k => q.includes(k))) {
-    return { answer: CRISIS_TEXT, source: 'Protokół bezpieczeństwa', docId: 'kb-crisis', reviewedAt: null, isSafety: true, mode: 'crisis', score: 1 };
+  if (SAFETY_KEYWORDS.some((k) => q.includes(k))) {
+    return {
+      answer: CRISIS_TEXT,
+      source: 'Protokół bezpieczeństwa',
+      docId: 'kb-crisis',
+      reviewedAt: null,
+      isSafety: true,
+      mode: 'crisis',
+      score: 1,
+    };
   }
   // 2) Retrieval semantyczny
   const [top] = await retrieve(q);
   if (!top || top.score < THRESHOLD) {
-    return { answer: FALLBACK_TEXT, source: 'Asystent (brak dopasowania)', docId: null, reviewedAt: null, isSafety: false, mode: 'fallback', score: top?.score };
+    return {
+      answer: FALLBACK_TEXT,
+      source: 'Asystent (brak dopasowania)',
+      docId: null,
+      reviewedAt: null,
+      isSafety: false,
+      mode: 'fallback',
+      score: top?.score,
+    };
   }
   // 3) Opcjonalny LLM nad pobranym dokumentem; w razie czego — ekstrakcyjna odpowiedź
   const llm = await askLLM(question, top);
@@ -78,8 +110,11 @@ export async function answer(question: string): Promise<AskResult> {
     return {
       answer: llm.replace(/Źródło:.*$/s, '').trim(),
       source: `${top.doc.source} · ${top.doc.title} · AI (na bazie zweryfikowanego dokumentu)`,
-      docId: top.doc.id, reviewedAt: top.doc.reviewedAt,
-      isSafety: false, mode: 'llm', score: top.score,
+      docId: top.doc.id,
+      reviewedAt: top.doc.reviewedAt,
+      isSafety: false,
+      mode: 'llm',
+      score: top.score,
     };
   }
   return makeExtractive(top);
@@ -88,10 +123,20 @@ export async function answer(question: string): Promise<AskResult> {
 export function logAsk(question: string, result: AskResult, latencyMs: number): void {
   const entry = {
     ts: new Date().toISOString(),
-    q_hash: crypto.createHash('sha256').update(question.trim().toLowerCase()).digest('hex').slice(0, 16),
-    docId: result.docId, isSafety: result.isSafety,
-    mode: result.mode, score: result.score ? Math.round(result.score * 1000) / 1000 : null,
+    q_hash: crypto
+      .createHash('sha256')
+      .update(question.trim().toLowerCase())
+      .digest('hex')
+      .slice(0, 16),
+    docId: result.docId,
+    isSafety: result.isSafety,
+    mode: result.mode,
+    score: result.score ? Math.round(result.score * 1000) / 1000 : null,
     latencyMs,
   };
-  try { fs.appendFileSync(LOG_FILE, JSON.stringify(entry) + '\n'); } catch { /* nieblokująco */ }
+  try {
+    fs.appendFileSync(LOG_FILE, JSON.stringify(entry) + '\n');
+  } catch {
+    /* nieblokująco */
+  }
 }

@@ -1,88 +1,129 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { ScrollView, Text, TextInput, Pressable, View, Alert, StyleSheet } from 'react-native';
-import { Screen, Card, PrimaryButton, Chip, useType } from '../components/UI';
+import { useCallback, useEffect, useState } from 'react';
+import { Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Card, Chip, PrimaryButton, Screen, useType } from '../components/UI';
 import { community, CommunityGroup, CommunityPost, api } from '../services/api';
 import { useAppStore } from '../store/useAppStore';
 import { colors, spacing } from '../theme/theme';
 
-/** Społeczność (beta) — dokument §5.10: moderowane grupy, zero porad medycznych. */
+/** Moderated community beta. Users share experiences, not medical advice. */
 export default function CommunityScreen() {
   const type = useType();
-  const store = useAppStore();
+  const profile = useAppStore((state) => state.profile);
+  const authToken = useAppStore((state) => state.authToken);
+  const setPairInfo = useAppStore((state) => state.setPairInfo);
   const [groups, setGroups] = useState<CommunityGroup[]>([]);
-  const [active, setActive] = useState<string | null>(null);
+  const [activeGroup, setActiveGroup] = useState<string | null>(null);
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [text, setText] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const ensureToken = useCallback(async (): Promise<string> => {
-    if (store.authToken) return store.authToken;
-    const a = await api.anonAuth(store.profile?.role ?? 'other');
-    store.setPairInfo({ authToken: a.token, userId: a.userId });
-    return a.token;
-  }, [store.authToken]);
+    if (authToken) return authToken;
+    const auth = await api.anonAuth(profile?.role ?? 'other');
+    setPairInfo({ authToken: auth.token, userId: auth.userId });
+    return auth.token;
+  }, [authToken, profile?.role, setPairInfo]);
 
-  const load = useCallback(async (groupId?: string) => {
-    try {
-      const token = await ensureToken();
-      const g = await community.groups(token);
-      setGroups(g.groups);
-      const gid = groupId ?? active ?? g.groups[0]?.id ?? null;
-      setActive(gid);
-      if (gid) {
-        const p = await community.posts(token, gid);
-        setPosts(p.posts);
+  const load = useCallback(
+    async (requestedGroup?: string) => {
+      try {
+        const token = await ensureToken();
+        const groupResponse = await community.groups(token);
+        setGroups(groupResponse.groups);
+        const groupId = requestedGroup ?? activeGroup ?? groupResponse.groups[0]?.id ?? null;
+        setActiveGroup(groupId);
+        if (groupId) {
+          const postResponse = await community.posts(token, groupId);
+          setPosts(postResponse.posts);
+        } else {
+          setPosts([]);
+        }
+        setError(null);
+      } catch {
+        setError('Brak połączenia z serwerem społeczności.');
       }
-      setError(null);
-    } catch { setError('Brak połączenia z serwerem społeczności.'); }
-  }, [active, ensureToken]);
+    },
+    [activeGroup, ensureToken],
+  );
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   const send = async () => {
-    if (!text.trim() || !active) return;
+    if (!text.trim() || !activeGroup) return;
     try {
       const token = await ensureToken();
-      const r = await community.addPost(token, active, text.trim());
-      if (r.notice) Alert.alert('Do zespołu moderacji', r.notice);
+      const response = await community.addPost(token, activeGroup, text.trim());
+      if (response.notice) Alert.alert('Do zespołu moderacji', response.notice);
       setText('');
-      load(active);
-    } catch { Alert.alert('Nie wysłano', 'Spróbuj ponownie później.'); }
+      await load(activeGroup);
+    } catch {
+      Alert.alert('Nie wysłano', 'Spróbuj ponownie później.');
+    }
   };
 
   return (
     <Screen>
       <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-        <Text style={[type.h1, { marginTop: spacing(1) }]}>👥 Społeczność</Text>
+        <Text accessibilityRole="header" style={[type.h1, { marginTop: spacing(1) }]}>
+          👥 Społeczność
+        </Text>
         <Card style={{ backgroundColor: colors.surfaceAlt }}>
           <Text style={type.small}>
-            Zasady: dzielimy się doświadczeniami, nie diagnozami. Porady medyczne są automatycznie
-            kierowane do zespołu — rzetelną wiedzę znajdziesz w zakładce 📖 Wiedza. Możesz całkowicie
-            wyłączyć społeczność (sekcja nie synchronizuje Twoich danych prywatnych).
+            Dzielimy się doświadczeniami, nie diagnozami. Porady medyczne są kierowane do moderacji.
+            Prywatne dane aplikacji nie są publikowane w społeczności.
           </Text>
         </Card>
 
-        {error && <Card><Text style={[type.body, { color: colors.danger }]}>{error}</Text></Card>}
+        {error && (
+          <Card>
+            <Text style={[type.body, { color: colors.danger }]}>{error}</Text>
+          </Card>
+        )}
 
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: spacing(1) }}>
-          {groups.map(g => <Chip key={g.id} label={g.name} selected={active === g.id} onPress={() => load(g.id)} />)}
+        <View style={styles.groupList}>
+          {groups.map((group) => (
+            <Chip
+              key={group.id}
+              label={group.name}
+              selected={activeGroup === group.id}
+              onPress={() => void load(group.id)}
+            />
+          ))}
         </View>
 
-        {posts.map(p => (
-          <Card key={p.id}>
-            <Text style={type.body}>{p.text}</Text>
+        {posts.map((post) => (
+          <Card key={post.id}>
+            <Text style={type.body}>{post.text}</Text>
             <Text style={[type.small, { marginTop: 4 }]}>
-              {p.authorRole === 'mother' ? '👩' : p.authorRole === 'father' ? '👨' : '🧑'} rodzic {p.authorIdHash} · {p.createdAt.slice(0, 10)}
+              {post.authorRole === 'mother' ? '👩' : post.authorRole === 'father' ? '👨' : '🧑'}{' '}
+              rodzic · {post.createdAt.slice(0, 10)}
             </Text>
           </Card>
         ))}
-        {posts.length === 0 && !error && <Text style={[type.body, { marginTop: spacing(2) }]}>Bądź pierwszą osobą, która coś napisze w tej grupie. 🌱</Text>}
+        {posts.length === 0 && !error && (
+          <Text style={[type.body, { marginTop: spacing(2) }]}>
+            Bądź pierwszą osobą w tej grupie. 🌱
+          </Text>
+        )}
 
         <Card style={{ marginTop: spacing(2) }}>
-          <TextInput accessibilityLabel="Napisz do grupy" style={styles.input}
-            placeholder="Twoje doświadczenie (bez porad medycznych)…" placeholderTextColor={colors.textMuted}
-            multiline value={text} onChangeText={setText} />
-          <PrimaryButton title="Opublikuj" disabled={text.trim().length < 3} onPress={send} />
+          <TextInput
+            accessibilityLabel="Napisz do grupy"
+            style={styles.input}
+            placeholder="Twoje doświadczenie (bez porad medycznych)…"
+            placeholderTextColor={colors.textMuted}
+            multiline
+            maxLength={2000}
+            value={text}
+            onChangeText={setText}
+          />
+          <PrimaryButton
+            title="Opublikuj"
+            disabled={text.trim().length < 3}
+            onPress={() => void send()}
+          />
         </Card>
       </ScrollView>
     </Screen>
@@ -90,5 +131,16 @@ export default function CommunityScreen() {
 }
 
 const styles = StyleSheet.create({
-  input: { borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingHorizontal: spacing(1.5), minHeight: 70, backgroundColor: colors.bg, color: colors.text, fontSize: 16, textAlignVertical: 'top' },
+  groupList: { flexDirection: 'row', flexWrap: 'wrap', marginTop: spacing(1) },
+  input: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    paddingHorizontal: spacing(1.5),
+    minHeight: 70,
+    backgroundColor: colors.bg,
+    color: colors.text,
+    fontSize: 16,
+    textAlignVertical: 'top',
+  },
 });

@@ -1,9 +1,16 @@
 // Domyślny język: polski. Struktura gotowa pod kolejne języki (en, uk...).
 export const t = {
   appName: 'Rodzic od Startu',
-  tabs: { today: 'Dziś', knowledge: 'Wiedza', calendar: 'Kalendarz', journal: 'Dziennik', profile: 'Profil' },
+  tabs: {
+    today: 'Dziś',
+    knowledge: 'Wiedza',
+    calendar: 'Kalendarz',
+    journal: 'Dziennik',
+    profile: 'Profil',
+  },
   onboarding: {
-    welcome: 'Witaj w aplikacji, która prowadzi Cię od poczęcia aż po 3. urodziny dziecka — krok po kroku, spokojnie i rzetelnie.',
+    welcome:
+      'Witaj w aplikacji, która prowadzi Cię od poczęcia aż po 3. urodziny dziecka — krok po kroku, spokojnie i rzetelnie.',
     whoAreYou: 'Kim jesteś?',
     mother: '👩 Jestem mamą',
     father: '👨 Jestem tatą / partnerem',
@@ -41,7 +48,8 @@ export const t = {
     add: 'Dodaj wydarzenie',
     title: 'Tytuł',
     date: 'Data (RRRR-MM-DD)',
-    empty: 'Brak wydarzeń. Badania z harmonogramu ciąży dodaliśmy automatycznie — możesz je edytować.',
+    empty:
+      'Brak wydarzeń. Badania z harmonogramu ciąży dodaliśmy automatycznie — możesz je edytować.',
   },
   journal: {
     notes: 'Notatki',
