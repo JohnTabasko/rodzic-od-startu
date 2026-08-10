@@ -1,0 +1,22 @@
+{
+  "expo": {
+    "name": "Rodzic od Startu",
+    "slug": "rodzic-od-startu",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "rodzicodstartu",
+    "userInterfaceStyle": "automatic",
+    "backgroundColor": "#FFF8F3",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "pl.rodzicodstartu.app"
+    },
+    "android": {
+      "package": "pl.rodzicodstartu.app"
+    },
+    "plugins": [
+      "expo-secure-store",
+      "expo-asset"
+    ]
+  }
+}

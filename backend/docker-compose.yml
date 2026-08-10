@@ -1,0 +1,17 @@
+# PostgreSQL 16 dla backendu (dev). Start: docker compose up -d
+# Następnie: DATABASE_URL=postgres://postgres:dev@localhost:5432/rodzic JWT_SECRET=<losowy> npm run dev
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_PASSWORD: dev
+      POSTGRES_DB: rodzic
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+volumes:
+  pgdata:
