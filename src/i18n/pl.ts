@@ -10,7 +10,7 @@ export const t = {
   },
   onboarding: {
     welcome:
-      'Witaj w aplikacji, która prowadzi Cię od poczęcia aż po 3. urodziny dziecka — krok po kroku, spokojnie i rzetelnie.',
+      'Spokojnie, krok po kroku — od pierwszego tętna do pierwszych kroków. Zbudujcie swoje gniazdko razem.',
     whoAreYou: 'Kim jesteś?',
     mother: '👩 Jestem mamą',
     father: '👨 Jestem tatą / partnerem',
@@ -39,7 +39,7 @@ export const t = {
     upcoming: 'Nadchodzące',
   },
   knowledge: {
-    title: 'Wiedza zweryfikowana',
+    title: 'Wiedza',
     search: 'Szukaj tematu…',
     weekByWeek: 'Ciąża tydzień po tygodniu',
     checklist: 'Torba do szpitala — checklista',

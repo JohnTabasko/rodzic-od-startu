@@ -236,9 +236,9 @@ const styles = StyleSheet.create({
   titleRow: { flexDirection: 'row', alignItems: 'center' },
   health: { marginLeft: 8, fontSize: 14 },
   codeInput: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: colors.line,
+    borderRadius: 16,
     paddingHorizontal: spacing(1.5),
     minHeight: 52,
     marginTop: spacing(2),

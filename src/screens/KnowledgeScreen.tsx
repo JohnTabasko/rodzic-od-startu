@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NavigationProp } from '@react-navigation/native';
 import type { RootStackParamList } from '../navigation/types';
-import { ScrollView, Text, TextInput, Pressable, StyleSheet } from 'react-native';
+import { ScrollView, Text, TextInput, Pressable, StyleSheet, View } from 'react-native';
 import { Screen, Card, SectionTitle, useType } from '../components/UI';
 import { useAppStore } from '../store/useAppStore';
 import { scheduleAutoSync } from '../services/sync';
@@ -51,8 +52,8 @@ export default function KnowledgeScreen() {
           onPress={() => nav.navigate('VideoLibrary')}
           style={{
             marginVertical: 8,
-            borderRadius: 12,
-            backgroundColor: '#2E7D6E',
+            borderRadius: 16,
+            backgroundColor: colors.sageDeep,
             minHeight: 48,
             justifyContent: 'center',
             paddingHorizontal: 16,
@@ -68,15 +69,15 @@ export default function KnowledgeScreen() {
           onPress={() => nav.navigate('Community')}
           style={{
             marginBottom: 8,
-            borderRadius: 12,
-            borderWidth: 2,
-            borderColor: '#2E7D6E',
+            borderRadius: 16,
+            borderWidth: 1.5,
+            borderColor: colors.lavenderDeep,
             minHeight: 48,
             justifyContent: 'center',
             paddingHorizontal: 16,
           }}
         >
-          <Text style={{ color: '#2E7D6E', fontSize: 17, fontWeight: '600' }}>
+          <Text style={{ color: colors.lavenderDeep, fontSize: 16, fontWeight: '800' }}>
             👥 Społeczność rodziców (beta)
           </Text>
         </Pressable>
@@ -126,7 +127,13 @@ export default function KnowledgeScreen() {
                 }}
                 style={styles.checkRow}
               >
-                <Text style={{ fontSize: 22 }}>{done ? '✅' : '⬜'}</Text>
+                <View style={[styles.checkIcon, done && styles.checkIconDone]}>
+                  <MaterialCommunityIcons
+                    name={done ? 'check' : 'checkbox-blank-outline'}
+                    size={18}
+                    color={done ? '#FFFFFF' : colors.textFaint}
+                  />
+                </View>
                 <Text
                   style={[
                     type.body,
@@ -155,14 +162,25 @@ export default function KnowledgeScreen() {
 
 const styles = StyleSheet.create({
   search: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: colors.line,
+    borderRadius: 16,
     paddingHorizontal: spacing(1.5),
     minHeight: 48,
     backgroundColor: colors.surface,
     color: colors.text,
-    fontSize: 16,
+    fontSize: 15,
   },
-  checkRow: { flexDirection: 'row', alignItems: 'center', minHeight: 44, paddingVertical: 4 },
+  checkRow: { flexDirection: 'row', alignItems: 'center', minHeight: 48, paddingVertical: 4 },
+  checkIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 9,
+    borderWidth: 1.5,
+    borderColor: colors.line,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkIconDone: { backgroundColor: colors.sageDeep, borderColor: colors.sageDeep },
 });

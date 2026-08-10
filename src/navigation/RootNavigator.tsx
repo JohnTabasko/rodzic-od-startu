@@ -1,5 +1,5 @@
 import React from 'react';
-import { Text } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -7,7 +7,7 @@ import type { MainTabParamList, RootStackParamList } from './types';
 import { useAppStore } from '../store/useAppStore';
 import { autoSync } from '../services/sync';
 import { initNotifications, syncEventReminders } from '../services/notifications';
-import { colors } from '../theme/theme';
+import { colors, radius, shadows } from '../theme/theme';
 import { t } from '../i18n/pl';
 import AssistantScreen from '../screens/AssistantScreen';
 import CalendarScreen from '../screens/CalendarScreen';
@@ -18,6 +18,8 @@ import OnboardingScreen from '../screens/OnboardingScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import TodayScreen from '../screens/TodayScreen';
 import VideoLibraryScreen from '../screens/VideoLibraryScreen';
+
+type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -30,15 +32,20 @@ const theme = {
     card: colors.surface,
     primary: colors.primary,
     text: colors.text,
-    border: colors.border,
+    border: colors.line,
   },
 };
 
-const icon = (emoji: string, label: string) => () => (
-  <Text accessibilityLabel={label} style={{ fontSize: 22 }}>
-    {emoji}
-  </Text>
-);
+const tabIcon =
+  (name: IconName, label: string) =>
+  ({ color, focused }: { color: string; focused: boolean }) => (
+    <MaterialCommunityIcons
+      name={name}
+      size={focused ? 25 : 23}
+      color={color}
+      accessibilityLabel={label}
+    />
+  );
 
 function MainTabs() {
   return (
@@ -46,33 +53,55 @@ function MainTabs() {
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textMuted,
+        tabBarInactiveTintColor: colors.textFaint,
+        tabBarLabelStyle: { fontSize: 10, fontWeight: '800' },
+        tabBarItemStyle: { paddingTop: 4 },
+        tabBarStyle: {
+          height: 72,
+          marginHorizontal: 12,
+          marginBottom: 12,
+          borderRadius: radius.card,
+          borderWidth: 1,
+          borderTopWidth: 1,
+          borderColor: colors.line,
+          backgroundColor: colors.surface,
+          ...shadows.card,
+        },
       }}
     >
       <Tab.Screen
         name="Today"
         component={TodayScreen}
-        options={{ title: t.tabs.today, tabBarIcon: icon('🏠', t.tabs.today) }}
+        options={{ title: t.tabs.today, tabBarIcon: tabIcon('home-variant-outline', t.tabs.today) }}
       />
       <Tab.Screen
         name="Knowledge"
         component={KnowledgeScreen}
-        options={{ title: t.tabs.knowledge, tabBarIcon: icon('📖', t.tabs.knowledge) }}
+        options={{
+          title: t.tabs.knowledge,
+          tabBarIcon: tabIcon('book-open-page-variant-outline', t.tabs.knowledge),
+        }}
       />
       <Tab.Screen
         name="Calendar"
         component={CalendarScreen}
-        options={{ title: t.tabs.calendar, tabBarIcon: icon('📅', t.tabs.calendar) }}
+        options={{
+          title: t.tabs.calendar,
+          tabBarIcon: tabIcon('calendar-month-outline', t.tabs.calendar),
+        }}
       />
       <Tab.Screen
         name="Journal"
         component={JournalScreen}
-        options={{ title: t.tabs.journal, tabBarIcon: icon('📊', t.tabs.journal) }}
+        options={{ title: t.tabs.journal, tabBarIcon: tabIcon('notebook-outline', t.tabs.journal) }}
       />
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}
-        options={{ title: t.tabs.profile, tabBarIcon: icon('👤', t.tabs.profile) }}
+        options={{
+          title: t.tabs.profile,
+          tabBarIcon: tabIcon('account-circle-outline', t.tabs.profile),
+        }}
       />
     </Tab.Navigator>
   );
@@ -101,36 +130,31 @@ export default function RootNavigator() {
 
   return (
     <NavigationContainer theme={theme}>
-      <Stack.Navigator>
+      <Stack.Navigator
+        screenOptions={{
+          headerStyle: { backgroundColor: colors.bg },
+          headerTintColor: colors.text,
+          headerTitleStyle: { fontWeight: '800' },
+          headerShadowVisible: false,
+        }}
+      >
         {onboarded ? (
           <>
             <Stack.Screen name="Main" component={MainTabs} options={{ headerShown: false }} />
             <Stack.Screen
               name="Assistant"
               component={AssistantScreen}
-              options={{
-                title: '💬 Asystent rodzica',
-                headerStyle: { backgroundColor: colors.bg },
-                headerTintColor: colors.text,
-              }}
+              options={{ title: 'Asystentka rodzica' }}
             />
             <Stack.Screen
               name="VideoLibrary"
               component={VideoLibraryScreen}
-              options={{
-                title: '🎬 Biblioteka wideo',
-                headerStyle: { backgroundColor: colors.bg },
-                headerTintColor: colors.text,
-              }}
+              options={{ title: 'Biblioteka wideo' }}
             />
             <Stack.Screen
               name="Community"
               component={CommunityScreen}
-              options={{
-                title: '👥 Społeczność',
-                headerStyle: { backgroundColor: colors.bg },
-                headerTintColor: colors.text,
-              }}
+              options={{ title: 'Społeczność' }}
             />
           </>
         ) : (

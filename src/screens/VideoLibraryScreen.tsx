@@ -183,7 +183,7 @@ export default function VideoLibraryScreen() {
 
 const styles = StyleSheet.create({
   categories: { flexDirection: 'row', flexWrap: 'wrap', marginTop: spacing(1) },
-  player: { width: '100%', aspectRatio: 16 / 9, borderRadius: 12, backgroundColor: '#000' },
+  player: { width: '100%', aspectRatio: 16 / 9, borderRadius: 16, backgroundColor: '#2E2926' },
   closeButton: { minHeight: MIN_TOUCH, justifyContent: 'center' },
   actions: { flexDirection: 'row', marginTop: spacing(1) },
   button: {
@@ -194,6 +194,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   primaryButtonText: { color: '#fff', fontSize: 16 },
-  downloadButton: { borderWidth: 1.5, borderColor: colors.accent, marginLeft: spacing(1) },
-  downloadText: { color: colors.accent, fontSize: 16 },
+  downloadButton: { borderWidth: 1.5, borderColor: colors.sageDeep, marginLeft: spacing(1) },
+  downloadText: { color: colors.sageDeep, fontSize: 16 },
 });

@@ -260,9 +260,9 @@ export default function JournalScreen() {
 
 const styles = StyleSheet.create({
   input: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: colors.line,
+    borderRadius: 16,
     paddingHorizontal: spacing(1.5),
     minHeight: 48,
     marginTop: spacing(1),
@@ -274,10 +274,15 @@ const styles = StyleSheet.create({
     width: 140,
     height: 140,
     borderRadius: 70,
-    backgroundColor: colors.primary,
+    backgroundColor: colors.primarySoft,
+    borderWidth: 1.5,
+    borderColor: colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
     marginVertical: spacing(1.5),
+    shadowColor: colors.primary,
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
     elevation: 3,
   },
 });

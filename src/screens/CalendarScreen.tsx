@@ -102,9 +102,9 @@ export default function CalendarScreen() {
 
 const styles = StyleSheet.create({
   input: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: colors.line,
+    borderRadius: 16,
     paddingHorizontal: spacing(1.5),
     minHeight: 48,
     marginTop: spacing(1),

@@ -133,9 +133,9 @@ export default function CommunityScreen() {
 const styles = StyleSheet.create({
   groupList: { flexDirection: 'row', flexWrap: 'wrap', marginTop: spacing(1) },
   input: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: colors.line,
+    borderRadius: 16,
     paddingHorizontal: spacing(1.5),
     minHeight: 70,
     backgroundColor: colors.bg,

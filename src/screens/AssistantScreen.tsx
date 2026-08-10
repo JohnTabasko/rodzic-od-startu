@@ -13,7 +13,7 @@ import { useType, Chip } from '../components/UI';
 import { ApiError, askAssistant } from '../services/api';
 import { ask, ASSISTANT_DISCLAIMER, SUGGESTED } from '../services/assistant';
 import { useAppStore } from '../store/useAppStore';
-import { colors, radius, spacing } from '../theme/theme';
+import { colors, radius, shadows, spacing } from '../theme/theme';
 
 interface Message {
   id: string;
@@ -209,9 +209,10 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: colors.accent,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    ...shadows.pop,
   },
   sendIcon: { color: '#fff', fontSize: 20 },
   disabled: { opacity: 0.45 },

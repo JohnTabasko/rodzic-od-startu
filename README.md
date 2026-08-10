@@ -1,6 +1,8 @@
 # 🤱 Rodzic od Startu
 
-Aplikacja mobilna wspierająca rodziców od ciąży do ukończenia przez dziecko 3 lat.
+> Warstwa wizualna: system projektowy inspirowany załączonym prototypem
+
+Aplikacja mobilna „Rodzic od Startu” wspierająca rodziców od ciąży do ukończenia przez dziecko 3 lat.
 Projekt składa się z aplikacji Expo/React Native oraz backendu Express/TypeScript.
 
 > **Status:** demonstrator/MVP. Treści medyczne, wideo i integracje zewnętrzne wymagają
@@ -26,7 +28,7 @@ Projekt składa się z aplikacji Expo/React Native oraz backendu Express/TypeScr
 - Expo SDK 57, React Native 0.86, TypeScript;
 - React Navigation;
 - Zustand z persystencją przez SecureStore (blokowanie dużych wartości);
-- `expo-notifications`, `expo-video`, `expo-file-system`;
+- `expo-notifications`, `expo-video`, `expo-file-system`, `expo-font` i `@expo/vector-icons`;
 - język domyślny: polski.
 
 ### Backend
